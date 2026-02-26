@@ -231,27 +231,41 @@ Faites preuve de pédagogie et soyez clair dans vos explications et procedures d
 **Exercice 1 :**  
 Quels sont les composants dont la perte entraîne une perte de données ?  
   
-*..Répondez à cet exercice ici..*
+La perte de données survient si l'on perd le PVC pra-backup.
+
+- Le Pod Flask est éphémère : sa perte n'entraîne aucune perte de données car la base est sur un volume persistant.
+- Le PVC pra-data contient la production : sa perte provoque une interruption, mais les données existent encore dans le backup.
+-Sinistre total : Si le disque physique hébergeant le cluster K3d tombe en panne, on perd potentiellement les deux PVC (Data + Backup), d'où l'importance de la réplication externe.
 
 **Exercice 2 :**  
 Expliquez nous pourquoi nous n'avons pas perdu les données lors de la supression du PVC pra-data  
   
-*..Répondez à cet exercice ici..*
+Nous n'avons pas perdu les données grâce au mécanisme de découplage et de sauvegarde asynchrone :
+- Un CronJob copiait chaque minute le fichier app.db du volume de production vers un volume de secours indépendant (pra-backup).
+- Lors de la suppression de la production, les fichiers de sauvegarde sont restés intacts sur le second volume.
+- Le Job de restauration a permis de réinjecter la version sauvegardée dans un nouveau volume de production tout neuf.
 
 **Exercice 3 :**  
 Quels sont les RTO et RPO de cette solution ?  
   
-*..Répondez à cet exercice ici..*
+-RPO (Recovery Point Objective) : 1 minute. C'est l'intervalle de notre CronJob. En cas de crash, on perd au maximum les données saisies depuis la dernière minute.
+-RTO (Recovery Time Objective) : Environ 2 à 5 minutes. C'est le temps nécessaire pour constater le crash, lancer le Job de restauration et redémarrer le Pod applicatif pour qu'il recharge la base.
 
 **Exercice 4 :**  
 Pourquoi cette solution (cet atelier) ne peux pas être utilisé dans un vrai environnement de production ? Que manque-t-il ?   
   
-*..Répondez à cet exercice ici..*
+-Localisation unique : Les backups sont stockés sur le même cluster que la production. Un incendie dans le datacenter détruit tout.
+-Rétention illimitée : Les backups s'accumulent chaque minute sans script de nettoyage, ce qui finira par saturer le disque.
+-Pas de vérification automatique : On ne sait pas si un backup est "bon" (non corrompu) avant de tenter une restauration manuelle.
   
 **Exercice 5 :**  
 Proposez une archtecture plus robuste.   
   
-*..Répondez à cet exercice ici..*
+Pour une production réelle, il faudrait :
+
+-Export déporté : Envoyer les backups vers un stockage objet externe (type AWS S3 ou Azure Blob Storage) dans une autre région géographique.
+-Base de données managée : Utiliser un service type RDS (AWS) ou Cloud SQL (GCP) qui gère nativement le multi-AZ (haute disponibilité) et les backups automatiques.
+-Tests de restauration (Game Days) : Automatiser des tests de restauration réguliers pour valider l'intégrité des sauvegardes.
 
 ---------------------------------------------------
 Séquence 6 : Ateliers  
@@ -263,13 +277,22 @@ Difficulté : Moyenne (~2 heures)
 * last_backup_file : nom du dernier backup présent dans /backup
 * backup_age_seconds : âge du dernier backup
 
-*..**Déposez ici une copie d'écran** de votre réussite..*
+![Screenshot Actions](status.png)
 
 ---------------------------------------------------
 ### **Atelier 2 : Choisir notre point de restauration**  
-Aujourd’hui nous restaurobs “le dernier backup”. Nous souhaitons **ajouter la capacité de choisir un point de restauration**.
+Aujourd’hui nous restaurons “le dernier backup”. Nous souhaitons **ajouter la capacité de choisir un point de restauration**.
 
-*..Décrir ici votre procédure de restauration (votre runbook)..*  
+Procédure de restauration granulaire :
+
+-Analyse de l'historique : Lister les sauvegardes et vérifier leur contenu via un Pod de debug ou une commande Python pour identifier le point de restauration sain (ex: 11 événements au lieu des 15 corrompus).
+*kubectl -n pra exec deployment/flask -- python3 -c "import sqlite3, glob, os; ..."*
+
+-Ciblage : Éditer le fichier pra/50-job-restore.yaml pour modifier la commande de copie et pointer manuellement vers le timestamp choisi :
+*cp /backup/app-1772099341.db /data/app.db
+
+-Exécution : Appliquer le Job de restauration.
+Reprise : Effectuer un *rollout restart deployment flask* pour que l'application lise la base restaurée.
   
 ---------------------------------------------------
 Evaluation
