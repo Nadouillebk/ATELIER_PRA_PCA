@@ -248,24 +248,24 @@ Nous n'avons pas perdu les données grâce au mécanisme de découplage et de sa
 **Exercice 3 :**  
 Quels sont les RTO et RPO de cette solution ?  
   
--RPO (Recovery Point Objective) : 1 minute. C'est l'intervalle de notre CronJob. En cas de crash, on perd au maximum les données saisies depuis la dernière minute.
--RTO (Recovery Time Objective) : Environ 2 à 5 minutes. C'est le temps nécessaire pour constater le crash, lancer le Job de restauration et redémarrer le Pod applicatif pour qu'il recharge la base.
+- RPO (Recovery Point Objective) : 1 minute. C'est l'intervalle de notre CronJob. En cas de crash, on perd au maximum les données saisies depuis la dernière minute.
+- RTO (Recovery Time Objective) : Environ 2 à 5 minutes. C'est le temps nécessaire pour constater le crash, lancer le Job de restauration et redémarrer le Pod applicatif pour qu'il recharge la base.
 
 **Exercice 4 :**  
 Pourquoi cette solution (cet atelier) ne peux pas être utilisé dans un vrai environnement de production ? Que manque-t-il ?   
   
--Localisation unique : Les backups sont stockés sur le même cluster que la production. Un incendie dans le datacenter détruit tout.
--Rétention illimitée : Les backups s'accumulent chaque minute sans script de nettoyage, ce qui finira par saturer le disque.
--Pas de vérification automatique : On ne sait pas si un backup est "bon" (non corrompu) avant de tenter une restauration manuelle.
+- Localisation unique : Les backups sont stockés sur le même cluster que la production. Un incendie dans le datacenter détruit tout.
+- Rétention illimitée : Les backups s'accumulent chaque minute sans script de nettoyage, ce qui finira par saturer le disque.
+- Pas de vérification automatique : On ne sait pas si un backup est "bon" (non corrompu) avant de tenter une restauration manuelle.
   
 **Exercice 5 :**  
 Proposez une archtecture plus robuste.   
   
 Pour une production réelle, il faudrait :
 
--Export déporté : Envoyer les backups vers un stockage objet externe (type AWS S3 ou Azure Blob Storage) dans une autre région géographique.
--Base de données managée : Utiliser un service type RDS (AWS) ou Cloud SQL (GCP) qui gère nativement le multi-AZ (haute disponibilité) et les backups automatiques.
--Tests de restauration (Game Days) : Automatiser des tests de restauration réguliers pour valider l'intégrité des sauvegardes.
+- Export déporté : Envoyer les backups vers un stockage objet externe (type AWS S3 ou Azure Blob Storage) dans une autre région géographique.
+- Base de données managée : Utiliser un service type RDS (AWS) ou Cloud SQL (GCP) qui gère nativement le multi-AZ (haute disponibilité) et les backups automatiques.
+- Tests de restauration (Game Days) : Automatiser des tests de restauration réguliers pour valider l'intégrité des sauvegardes.
 
 ---------------------------------------------------
 Séquence 6 : Ateliers  
@@ -285,13 +285,13 @@ Aujourd’hui nous restaurons “le dernier backup”. Nous souhaitons **ajouter
 
 Procédure de restauration granulaire :
 
--Analyse de l'historique : Lister les sauvegardes et vérifier leur contenu via un Pod de debug ou une commande Python pour identifier le point de restauration sain (ex: 11 événements au lieu des 15 corrompus).
+- Analyse de l'historique : Lister les sauvegardes et vérifier leur contenu via un Pod de debug ou une commande Python pour identifier le point de restauration sain (ex: 11 événements au lieu des 15 corrompus).
 ```kubectl -n pra exec deployment/flask -- python3 -c "import sqlite3, glob, os; ..."```
 
--Ciblage : Éditer le fichier pra/50-job-restore.yaml pour modifier la commande de copie et pointer manuellement vers le timestamp choisi :
+- Ciblage : Éditer le fichier pra/50-job-restore.yaml pour modifier la commande de copie et pointer manuellement vers le timestamp choisi :
 ```cp /backup/app-1772099341.db /data/app.db```
 
--Exécution : Appliquer le Job de restauration.
+- Exécution : Appliquer le Job de restauration.
 Reprise : Effectuer un ```rollout restart deployment flask``` pour que l'application lise la base restaurée.
   
 ---------------------------------------------------
