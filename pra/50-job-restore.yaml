@@ -13,7 +13,8 @@ spec:
           command: ["/bin/sh","-c"]
           args:
             - |
-              LATEST=$(ls -t /backup/*.db | head -1)
+              LATEST=/backup/app-1772099341.db
+              echo "Restauration manuelle du point de sauvegarde : $LATEST"
               cp $LATEST /data/app.db
           volumeMounts:
             - name: data
