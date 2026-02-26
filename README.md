@@ -286,13 +286,13 @@ Aujourd’hui nous restaurons “le dernier backup”. Nous souhaitons **ajouter
 Procédure de restauration granulaire :
 
 -Analyse de l'historique : Lister les sauvegardes et vérifier leur contenu via un Pod de debug ou une commande Python pour identifier le point de restauration sain (ex: 11 événements au lieu des 15 corrompus).
-*kubectl -n pra exec deployment/flask -- python3 -c "import sqlite3, glob, os; ..."*
+```kubectl -n pra exec deployment/flask -- python3 -c "import sqlite3, glob, os; ..."```
 
 -Ciblage : Éditer le fichier pra/50-job-restore.yaml pour modifier la commande de copie et pointer manuellement vers le timestamp choisi :
-*cp /backup/app-1772099341.db /data/app.db
+```cp /backup/app-1772099341.db /data/app.db```
 
 -Exécution : Appliquer le Job de restauration.
-Reprise : Effectuer un *rollout restart deployment flask* pour que l'application lise la base restaurée.
+Reprise : Effectuer un ```rollout restart deployment flask``` pour que l'application lise la base restaurée.
   
 ---------------------------------------------------
 Evaluation
