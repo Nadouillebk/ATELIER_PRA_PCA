@@ -89,31 +89,39 @@ def count():
 
     return jsonify(count=n)
 
-@app.get("/status")
+@app.route('/status')
 def status():
-    init_db()
+    import os
+    import glob
+    import time
 
-    #Compte le nombre d'événements
-    conn = get_conn()
-    cur = conn.execute("SELECT COUNT(*) FROM events")
-    n = cur.fetchone()[0]
-    conn.close()
-
-    #Vérifie le dernier backup dans /backup
-    backup_path = "/backup/app.db.bak"
+    # On cherche tous les fichiers qui commencent par 'app-' et finissent par '.db'
+    backups = glob.glob('/backup/app-*.db')
+    
     last_backup = "aucun"
     age = 0
-
-    if os.path.exists(backup_path):
-        last_backup = "app.db.bak"
-        #Calcul âge en secondes
-        age = int(time.time() - os.path.getmtime(backup_path))
     
-    return jsonify(
-        count=n,
-        last_backup_file=last_backup,
-        backup_age_seconds=age
-    )
+    if backups:
+        # On récupère le fichier avec la date de modification la plus récente
+        latest_file = max(backups, key=os.path.getmtime)
+        last_backup = os.path.basename(latest_file)
+        age = int(time.time() - os.path.getmtime(latest_file))
+
+    count = 0
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM messages")
+        count = cursor.fetchone()[0]
+        conn.close()
+    except:
+        pass
+
+    return jsonify({
+        "last_backup_file": last_backup,
+        "backup_age_seconds": age,
+        "count": count
+    })
 
 # ---------- Main ----------
 if __name__ == "__main__":
